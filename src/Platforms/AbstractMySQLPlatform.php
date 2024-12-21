@@ -747,6 +747,7 @@ abstract class AbstractMySQLPlatform extends AbstractPlatform
             'mediumblob' => Types::BLOB,
             'mediumint'  => Types::INTEGER,
             'mediumtext' => Types::TEXT,
+            'number'     => Types::NUMBER,
             'numeric'    => Types::DECIMAL,
             'real'       => Types::FLOAT,
             'set'        => Types::SIMPLE_ARRAY,

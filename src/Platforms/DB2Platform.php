@@ -54,6 +54,7 @@ class DB2Platform extends AbstractPlatform
             'decimal'   => Types::DECIMAL,
             'double'    => Types::FLOAT,
             'integer'   => Types::INTEGER,
+            'number'    => Types::DECIMAL,
             'real'      => Types::SMALLFLOAT,
             'smallint'  => Types::SMALLINT,
             'time'      => Types::TIME_MUTABLE,

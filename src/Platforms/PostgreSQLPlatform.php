@@ -725,6 +725,7 @@ class PostgreSQLPlatform extends AbstractPlatform
             'json'             => Types::JSON,
             'jsonb'            => Types::JSON,
             'money'            => Types::DECIMAL,
+            'number'           => Types::DECIMAL,
             'numeric'          => Types::DECIMAL,
             'serial'           => Types::INTEGER,
             'serial4'          => Types::INTEGER,

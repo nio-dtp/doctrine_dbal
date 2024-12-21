@@ -1074,6 +1074,7 @@ class SQLServerPlatform extends AbstractPlatform
             'money'            => Types::INTEGER,
             'nchar'            => Types::STRING,
             'ntext'            => Types::TEXT,
+            'number'           => Types::DECIMAL,
             'numeric'          => Types::DECIMAL,
             'nvarchar'         => Types::STRING,
             'real'             => Types::SMALLFLOAT,
