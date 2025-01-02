@@ -26,6 +26,7 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Query\Expression\ExpressionBuilder;
 use Doctrine\DBAL\Query\QueryBuilder;
+use Doctrine\DBAL\Query\QueryBuildersAggregator;
 use Doctrine\DBAL\Schema\AbstractSchemaManager;
 use Doctrine\DBAL\Schema\DefaultSchemaManagerFactory;
 use Doctrine\DBAL\Schema\SchemaManagerFactory;
@@ -104,6 +105,8 @@ class Connection implements ServerVersionProvider
 
     private SchemaManagerFactory $schemaManagerFactory;
 
+    private ?QueryBuildersAggregator $queryBuildersAggregator = null;
+
     /**
      * Initializes a new instance of the Connection class.
      *
@@ -126,6 +129,13 @@ class Connection implements ServerVersionProvider
 
         $this->schemaManagerFactory = $this->_config->getSchemaManagerFactory()
             ?? new DefaultSchemaManagerFactory();
+
+        $this->queryBuildersAggregator = QueryBuildersAggregator::create();
+    }
+
+    public function getQueryBuildersAggregator(): QueryBuildersAggregator
+    {
+        return $this->queryBuildersAggregator;
     }
 
     /**

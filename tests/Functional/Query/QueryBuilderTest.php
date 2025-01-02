@@ -256,17 +256,26 @@ final class QueryBuilderTest extends FunctionalTestCase
         $subQueryBuilder1 = $this->connection->createQueryBuilder();
         $subQueryBuilder1->select('id')
             ->from('for_update')
-            ->where($qb->expr()->eq('id', $qb->createNamedParameter(1, ParameterType::INTEGER)));
+            ->where($subQueryBuilder1->expr()->eq(
+                'id',
+                $subQueryBuilder1->createNamedParameter(1, ParameterType::INTEGER),
+            ));
 
         $subQueryBuilder2 = $this->connection->createQueryBuilder();
         $subQueryBuilder2->select('id')
             ->from('for_update')
-            ->where($qb->expr()->eq('id', $qb->createNamedParameter(2, ParameterType::INTEGER)));
+            ->where($subQueryBuilder2->expr()->eq(
+                'id',
+                $subQueryBuilder2->createNamedParameter(2, ParameterType::INTEGER),
+            ));
 
         $subQueryBuilder3 = $this->connection->createQueryBuilder();
         $subQueryBuilder3->select('id')
             ->from('for_update')
-            ->where($qb->expr()->eq('id', $qb->createNamedParameter(1, ParameterType::INTEGER)));
+            ->where($subQueryBuilder3->expr()->eq(
+                'id',
+                $subQueryBuilder3->createNamedParameter(1, ParameterType::INTEGER),
+            ));
 
         $qb->union($subQueryBuilder1)
             ->addUnion($subQueryBuilder2, UnionType::DISTINCT)
@@ -327,6 +336,32 @@ final class QueryBuilderTest extends FunctionalTestCase
         $qb->union($subQueryBuilder1)
             ->addUnion($subQueryBuilder2, UnionType::DISTINCT)
             ->addUnion($subQueryBuilder3, UnionType::DISTINCT)
+            ->orderBy('id', 'ASC');
+
+        self::assertSame($expectedRows, $qb->executeQuery()->fetchAllAssociative());
+    }
+
+    public function testSelectWithParametersBindOnDifferentQueryBuilders(): void
+    {
+        $expectedRows = $this->prepareExpectedRows([['id' => 1], ['id' => 2]]);
+        $qb           = $this->connection->createQueryBuilder();
+
+        $queryBuilder1 = $this->connection->createQueryBuilder();
+        $queryBuilder1->select('id')
+            ->from('for_update')
+            ->where('id = :id1')
+            ->setParameter('id1', 1);
+
+        $queryBuilder2 = $this->connection->createQueryBuilder();
+        $queryBuilder2->select('id')
+            ->from('for_update')
+            ->where('id = :id2')
+            ->setParameter('id2', 2);
+
+        $qb->select('id')
+            ->from('for_update')
+            ->where($qb->expr()->in('id', $queryBuilder1->getSQL()))
+            ->orWhere($qb->expr()->in('id', $queryBuilder2->getSQL()))
             ->orderBy('id', 'ASC');
 
         self::assertSame($expectedRows, $qb->executeQuery()->fetchAllAssociative());

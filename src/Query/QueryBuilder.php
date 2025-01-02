@@ -76,13 +76,6 @@ class QueryBuilder
     private ?int $maxResults = null;
 
     /**
-     * The counter of bound parameters used with {@see bindValue).
-     *
-     * @var int<0, max>
-     */
-    private int $boundCounter = 0;
-
-    /**
      * The SELECT parts of the query.
      *
      * @var string[]
@@ -172,6 +165,7 @@ class QueryBuilder
      */
     public function __construct(private readonly Connection $connection)
     {
+        $this->connection->getQueryBuildersAggregator()->register($this);
     }
 
     /**
@@ -302,12 +296,18 @@ class QueryBuilder
      */
     public function executeQuery(): Result
     {
-        return $this->connection->executeQuery(
+        $queryBuildersAggregate = $this->connection->getQueryBuildersAggregator();
+        [$params, $types]       = $queryBuildersAggregate->buildParametersAndTypes();
+
+        $result = $this->connection->executeQuery(
             $this->getSQL(),
-            $this->params,
-            $this->types,
+            $params,
+            $types,
             $this->resultCacheProfile,
         );
+        $queryBuildersAggregate->toReset();
+
+        return $result;
     }
 
     /**
@@ -1430,8 +1430,8 @@ class QueryBuilder
         ?string $placeHolder = null,
     ): string {
         if ($placeHolder === null) {
-            $this->boundCounter++;
-            $placeHolder = ':dcValue' . $this->boundCounter;
+            $this->connection->getQueryBuildersAggregator()->incrementBoundCounter();
+            $placeHolder = ':dcValue' . $this->connection->getQueryBuildersAggregator()->getBoundCounter();
         }
 
         $this->setParameter(substr($placeHolder, 1), $value, $type);
@@ -1460,8 +1460,8 @@ class QueryBuilder
         mixed $value,
         string|ParameterType|Type|ArrayParameterType $type = ParameterType::STRING,
     ): string {
-        $this->setParameter($this->boundCounter, $value, $type);
-        $this->boundCounter++;
+        $this->setParameter($this->connection->getQueryBuildersAggregator()->getBoundCounter(), $value, $type);
+        $this->connection->getQueryBuildersAggregator()->incrementBoundCounter();
 
         return '?';
     }

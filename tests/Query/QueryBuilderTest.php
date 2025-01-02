@@ -11,6 +11,7 @@ use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Query\Expression\ExpressionBuilder;
 use Doctrine\DBAL\Query\QueryBuilder;
+use Doctrine\DBAL\Query\QueryBuildersAggregator;
 use Doctrine\DBAL\Query\QueryException;
 use Doctrine\DBAL\Query\UnionType;
 use Doctrine\DBAL\Result;
@@ -51,6 +52,11 @@ class QueryBuilderTest extends TestCase
 
         $this->conn->method('getDatabasePlatform')
             ->willReturn($platform);
+
+        $queryBuildersAggregate = QueryBuildersAggregator::create();
+        $this->conn->method('getQueryBuildersAggregator')
+            ->willReturn($queryBuildersAggregate);
+        $queryBuildersAggregate->toReset();
     }
 
     public function testSimpleSelectWithoutFrom(): void
