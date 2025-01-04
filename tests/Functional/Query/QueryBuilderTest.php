@@ -215,9 +215,6 @@ final class QueryBuilderTest extends FunctionalTestCase
     {
         $expectedRows = $this->prepareExpectedRows([['field_one' => 2]]);
         $platform     = $this->connection->getDatabasePlatform();
-        $plainSelect1 = $platform->getDummySelectSQL('1 as field_one');
-        $plainSelect2 = $platform->getDummySelectSQL('2 as field_one');
-        $plainSelect3 = $platform->getDummySelectSQL('1 as field_one');
         $qb           = $this->connection->createQueryBuilder();
         $qb->union($platform->getDummySelectSQL('1 as field_one'))
             ->addUnion($platform->getDummySelectSQL('2 as field_one'), UnionType::DISTINCT)
@@ -532,6 +529,122 @@ final class QueryBuilderTest extends FunctionalTestCase
             ->from('cte_a');
 
         self::expectException(NotSupported::class);
+        $qb->executeQuery();
+    }
+
+    public function testUnionAndAddUnionWorksWithBindingNamedParametersToQueryBuilderParts(): void
+    {
+        $expectedRows = $this->prepareExpectedRows([['id' => 2], ['id' => 1], ['id' => 1]]);
+        $qb           = $this->connection->createQueryBuilder();
+
+        $subQueryBuilder1 = $this->connection->createQueryBuilder();
+        $subQueryBuilder1->select('id')
+            ->from('for_update')
+            ->where('id = :id1')
+            ->setParameter('id1', 1, ParameterType::INTEGER);
+
+        $subQueryBuilder2 = $this->connection->createQueryBuilder();
+        $subQueryBuilder2->select('id')
+            ->from('for_update')
+            ->where('id = :id2')
+            ->setParameter('id2', 2, ParameterType::INTEGER);
+
+        $subQueryBuilder3 = $this->connection->createQueryBuilder();
+        $subQueryBuilder3->select('id')
+            ->from('for_update')
+            ->where('id = :id3')
+            ->setParameter('id3', 1, ParameterType::INTEGER);
+
+        $qb->union($subQueryBuilder1)
+            ->addUnion($subQueryBuilder2)
+            ->addUnion($subQueryBuilder3, UnionType::ALL)
+            ->orderBy('id', 'DESC');
+
+        self::assertSame($expectedRows, $qb->executeQuery()->fetchAllAssociative());
+    }
+
+    public function testUnionAndAddUnionWorksWithBindingPositionalParametersToQueryBuilderParts(): void
+    {
+        $expectedRows = $this->prepareExpectedRows([['id' => 1], ['id' => 1], ['id' => 2]]);
+        $qb           = $this->connection->createQueryBuilder();
+
+        $subQueryBuilder1 = $this->connection->createQueryBuilder();
+        $subQueryBuilder1->select('id')
+            ->from('for_update')
+            ->where('id = ?')
+            ->setParameter(0, 1, ParameterType::INTEGER);
+
+        $subQueryBuilder2 = $this->connection->createQueryBuilder();
+        $subQueryBuilder2->select('id')
+            ->from('for_update')
+            ->where($subQueryBuilder2->expr()->eq(
+                'id',
+                $subQueryBuilder2->createPositionalParameter(2, ParameterType::INTEGER),
+            ));
+
+        $subQueryBuilder3 = $this->connection->createQueryBuilder();
+        $subQueryBuilder3->select('id')
+            ->from('for_update')
+            ->where('id = ?')
+            ->setParameter(0, 1, ParameterType::INTEGER);
+
+        $qb->union($subQueryBuilder1)
+            ->addUnion($subQueryBuilder2)
+            ->addUnion($subQueryBuilder3, UnionType::ALL)
+            ->orderBy('id', 'ASC');
+
+        self::assertSame($expectedRows, $qb->executeQuery()->fetchAllAssociative());
+    }
+
+    public function testUnionAndAddUnionThrowsExceptionWithDuplicatedParametersNames(): void
+    {
+        $qb = $this->connection->createQueryBuilder();
+
+        $subQueryBuilder1 = $this->connection->createQueryBuilder();
+        $subQueryBuilder1->select('id')
+            ->from('for_update')
+            ->where('id = :id')
+            ->setParameter('id', 1, ParameterType::INTEGER);
+
+        $subQueryBuilder2 = $this->connection->createQueryBuilder();
+        $subQueryBuilder2->select('id')
+            ->from('for_update')
+            ->where('id = :id')
+            ->setParameter('id', 2, ParameterType::INTEGER);
+
+        $qb->union($subQueryBuilder1)
+            ->addUnion($subQueryBuilder2);
+
+        self::expectExceptionMessage('Found duplicated parameter in query. The duplicated parameter names are: "id".');
+        $qb->executeQuery();
+    }
+
+    public function testUnionAndAddUnionThrowsExceptionWithDuplicatedCreatedParametersNames(): void
+    {
+        $qb = $this->connection->createQueryBuilder();
+
+        $subQueryBuilder1 = $this->connection->createQueryBuilder();
+        $subQueryBuilder1->select('id')
+            ->from('for_update')
+            ->where($subQueryBuilder1->expr()->eq(
+                'id',
+                $subQueryBuilder1->createNamedParameter(1, ParameterType::INTEGER),
+            ));
+
+        $subQueryBuilder2 = $this->connection->createQueryBuilder();
+        $subQueryBuilder2->select('id')
+            ->from('for_update')
+            ->where($subQueryBuilder2->expr()->eq(
+                'id',
+                $subQueryBuilder2->createNamedParameter(2, ParameterType::INTEGER),
+            ));
+
+        $qb->union($subQueryBuilder1)
+            ->addUnion($subQueryBuilder2);
+
+        self::expectExceptionMessage(
+            'Found duplicated parameter in query. The duplicated parameter names are: "dcValue1".',
+        );
         $qb->executeQuery();
     }
 

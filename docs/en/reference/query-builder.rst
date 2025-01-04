@@ -324,6 +324,9 @@ or QueryBuilder instances to one of the following methods:
 * ``union(string|QueryBuilder $part)``
 * ``addUnion(string|QueryBuilder $part, UnionType $type = UnionType::DISTINCT)``
 
+If you pass a QueryBuilder instance, you can set parameters on it.
+But you cannot use same parameter names in different QueryBuilder instances.
+
 .. code-block:: php
 
     <?php
@@ -358,10 +361,14 @@ or QueryBuilder instances to one of the following methods:
 
     $subQueryBuilder1
         ->select('id AS field')
-        ->from('a_table');
+        ->from('a_table')
+        ->where('id > :minId')
+        ->setParameter('minId', 12);
     $subQueryBuilder2
         ->select('id AS field')
-        ->from('a_table');
+        ->from('a_table')
+        ->where('id < :maxId')
+        ->setParameter('maxId', 133);
     $queryBuilder
         ->union($subQueryBuilder1)
         ->addUnion($subQueryBuilder2,UnionType::ALL)

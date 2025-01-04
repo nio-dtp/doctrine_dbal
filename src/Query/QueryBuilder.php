@@ -312,12 +312,75 @@ class QueryBuilder
      */
     public function executeQuery(): Result
     {
+        [$params, $types] = $this->buildParametersAndTypes();
+
         return $this->connection->executeQuery(
             $this->getSQL(),
-            $this->params,
-            $this->types,
+            $params,
+            $types,
             $this->resultCacheProfile,
         );
+    }
+
+    /**
+     * Build then return parameters and types for the query.
+     *
+     * @return array{
+     *     list<mixed>|array<string, mixed>,
+     *     WrapperParameterTypeArray,
+     * } The parameters and types for the query.
+     */
+    private function buildParametersAndTypes(): array
+    {
+        $partParams = $partParamTypes = [];
+
+        foreach ($this->unionParts as $part) {
+            if (! $part->query instanceof self || count($part->query->params) === 0) {
+                continue;
+            }
+
+            $this->guardDuplicatedParameterNames($partParams, $part->query->params);
+
+            $partParams     = array_merge($partParams, $part->query->params);
+            $partParamTypes = array_merge($partParamTypes, $part->query->types);
+        }
+
+        if (count($partParams) === 0) {
+            return [$this->params, $this->types];
+        }
+
+        $this->guardDuplicatedParameterNames($partParams, $this->params);
+
+        return [
+            array_merge($partParams, $this->params),
+            array_merge($partParamTypes, $this->types),
+        ];
+    }
+
+    /**
+     * Guards against duplicated parameter names.
+     *
+     * @param list<mixed>|array<string, mixed> $params
+     * @param list<mixed>|array<string, mixed> $paramsToMerge
+     *
+     * @throws QueryException
+     */
+    private function guardDuplicatedParameterNames(array $params, array $paramsToMerge): void
+    {
+        if (count($params) === 0 || count($paramsToMerge) === 0) {
+            return;
+        }
+
+        $paramsKeys        = array_filter(array_keys($params), 'is_string');
+        $paramsToMergeKeys = array_filter(array_keys($paramsToMerge), 'is_string');
+
+        $duplicates = array_intersect($paramsKeys, $paramsToMergeKeys);
+        if (count($duplicates) > 0) {
+            throw new QueryException(sprintf(
+                'Found duplicated parameter in query. The duplicated parameter names are: "%s".',
+                implode(', ', $duplicates),
+            ));
+        }
     }
 
     /**
